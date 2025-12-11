@@ -1,0 +1,230 @@
+{
+  "model_name": "CNN-BiLSTM-Attention_Complete",
+  "feature_columns": [
+    "temp",
+    "humidity",
+    "co",
+    "lpg",
+    "smoke",
+    "nh3",
+    "motion",
+    "light",
+    "hour_sin",
+    "hour_cos",
+    "month_sin",
+    "month_cos",
+    "temp_lag_1",
+    "humidity_lag_1",
+    "nh3_lag_1",
+    "co_lag_1",
+    "temp_lag_2",
+    "humidity_lag_2",
+    "nh3_lag_2",
+    "co_lag_2",
+    "temp_lag_3",
+    "humidity_lag_3",
+    "nh3_lag_3",
+    "co_lag_3",
+    "temp_lag_6",
+    "humidity_lag_6",
+    "nh3_lag_6",
+    "co_lag_6",
+    "temp_lag_12",
+    "humidity_lag_12",
+    "nh3_lag_12",
+    "co_lag_12",
+    "temp_lag_24",
+    "humidity_lag_24",
+    "nh3_lag_24",
+    "co_lag_24",
+    "temp_rolling_mean_6",
+    "temp_rolling_std_6",
+    "humidity_rolling_mean_6",
+    "temp_rolling_mean_12",
+    "temp_rolling_std_12",
+    "humidity_rolling_mean_12",
+    "temp_rolling_mean_24",
+    "temp_rolling_std_24",
+    "humidity_rolling_mean_24",
+    "temp_humidity_interaction",
+    "nh3_co_ratio"
+  ],
+  "target_names": [
+    "temp_1h",
+    "humidity_1h",
+    "nh3_1h",
+    "co_1h",
+    "temp_6h",
+    "humidity_6h",
+    "nh3_6h",
+    "co_6h",
+    "temp_24h",
+    "humidity_24h",
+    "nh3_24h",
+    "co_24h"
+  ],
+  "thresholds_config": {
+    "temperature": {
+      "0-7": {
+        "min": 35,
+        "max": 37,
+        "optimal_min": 35.5,
+        "optimal_max": 36.5
+      },
+      "7-14": {
+        "min": 32,
+        "max": 34,
+        "optimal_min": 32.5,
+        "optimal_max": 33.5
+      },
+      "14-21": {
+        "min": 29,
+        "max": 32,
+        "optimal_min": 30,
+        "optimal_max": 31
+      },
+      "21-28": {
+        "min": 26,
+        "max": 29,
+        "optimal_min": 27,
+        "optimal_max": 28
+      },
+      "28-35": {
+        "min": 23,
+        "max": 26,
+        "optimal_min": 24,
+        "optimal_max": 25
+      },
+      "35-1000": {
+        "min": 20,
+        "max": 23,
+        "optimal_min": 21,
+        "optimal_max": 22
+      }
+    },
+    "humidity": {
+      "0-3": {
+        "min": 60,
+        "max": 70,
+        "optimal_min": 62,
+        "optimal_max": 68
+      },
+      "3-14": {
+        "min": 50,
+        "max": 70,
+        "optimal_min": 55,
+        "optimal_max": 65
+      },
+      "14-1000": {
+        "min": 40,
+        "max": 70,
+        "optimal_min": 45,
+        "optimal_max": 65
+      }
+    },
+    "nh3": {
+      "optimal": 5,
+      "warning": 10,
+      "danger": 20,
+      "critical": 25
+    },
+    "co": {
+      "optimal": 10,
+      "warning": 50,
+      "danger": 600,
+      "critical": 2000
+    },
+    "risk_levels": {
+      "optimal": "🟢 Optimal",
+      "warning": "🟡 Avertissement",
+      "danger": "🔴 Danger",
+      "critical": "💀 Critique"
+    },
+    "manual_thresholds": {}
+  },
+  "performance": {
+    "mae": 0.7063861638846713,
+    "rmse": 1.3635139872543933,
+    "r2": 0.3270903983349523
+  },
+  "creation_date": "2025-11-05T16:51:00.388107",
+  "model_type": "Deep Learning",
+  "input_shape": [
+    168,
+    47
+  ],
+  "output_shape": 12,
+  "horizon_mapping": {
+    "1h": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "6h": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "24h": [
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  "scaler_info": {
+    "num_scalers": 47,
+    "scaler_type": "StandardScaler",
+    "feature_mapping": {
+      "0": "temp",
+      "1": "humidity",
+      "2": "co",
+      "3": "lpg",
+      "4": "smoke",
+      "5": "nh3",
+      "6": "motion",
+      "7": "light",
+      "8": "hour_sin",
+      "9": "hour_cos",
+      "10": "month_sin",
+      "11": "month_cos",
+      "12": "temp_lag_1",
+      "13": "humidity_lag_1",
+      "14": "nh3_lag_1",
+      "15": "co_lag_1",
+      "16": "temp_lag_2",
+      "17": "humidity_lag_2",
+      "18": "nh3_lag_2",
+      "19": "co_lag_2",
+      "20": "temp_lag_3",
+      "21": "humidity_lag_3",
+      "22": "nh3_lag_3",
+      "23": "co_lag_3",
+      "24": "temp_lag_6",
+      "25": "humidity_lag_6",
+      "26": "nh3_lag_6",
+      "27": "co_lag_6",
+      "28": "temp_lag_12",
+      "29": "humidity_lag_12",
+      "30": "nh3_lag_12",
+      "31": "co_lag_12",
+      "32": "temp_lag_24",
+      "33": "humidity_lag_24",
+      "34": "nh3_lag_24",
+      "35": "co_lag_24",
+      "36": "temp_rolling_mean_6",
+      "37": "temp_rolling_std_6",
+      "38": "humidity_rolling_mean_6",
+      "39": "temp_rolling_mean_12",
+      "40": "temp_rolling_std_12",
+      "41": "humidity_rolling_mean_12",
+      "42": "temp_rolling_mean_24",
+      "43": "temp_rolling_std_24",
+      "44": "humidity_rolling_mean_24",
+      "45": "temp_humidity_interaction",
+      "46": "nh3_co_ratio"
+    }
+  }
+}

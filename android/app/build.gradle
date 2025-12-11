@@ -113,6 +113,8 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite:2.12.0'
     implementation 'org.tensorflow:tensorflow-lite-metadata:0.4.4'
 
+    implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.12.0'
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
