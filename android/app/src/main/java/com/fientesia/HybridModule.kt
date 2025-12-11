@@ -1,6 +1,7 @@
 package com.fientesia
 
 import android.net.Uri
+import android.util.Log
 import com.facebook.react.bridge.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,6 +21,10 @@ import org.tensorflow.lite.flex.FlexDelegate
 class HybridModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
+    companion object {
+        private const val TAG = "HybridModule"
+    }
+
     private var interpreter: Interpreter? = null
     private val sampleCount = 168
     private val featureCount = 47
@@ -35,17 +40,48 @@ class HybridModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun loadModel(modelName: String, scalerName: String, configName: String, promise: Promise) {
         try {
+            Log.d(TAG, "========================================")
+            Log.d(TAG, " CHARGEMENT DU MODÈLE DÉMARRÉ")
+            Log.d(TAG, "========================================")
+            Log.d(TAG, "Fichiers:")
+            Log.d(TAG, "  - Modèle: $modelName")
+            Log.d(TAG, "  - Scalers: $scalerName")
+            Log.d(TAG, "  - Config: $configName")
+            
             val model = loadModelFile(modelName)
+            Log.d(TAG, " Fichier modèle chargé (taille: ${model.capacity()} bytes)")
+            
             val options = Interpreter.Options()
-            options.addDelegate(FlexDelegate())   // <<< IMPORTANT
+            options.addDelegate(FlexDelegate())
+            Log.d(TAG, " FlexDelegate activé")
 
             interpreter = Interpreter(model, options)
+            Log.d(TAG, " Interpreter TensorFlow Lite créé")
+            
+            // Log des informations sur le modèle
+            val inputTensor = interpreter!!.getInputTensor(0)
+            val outputTensor = interpreter!!.getOutputTensor(0)
+            Log.d(TAG, " Informations du modèle:")
+            Log.d(TAG, "  Input shape: ${inputTensor.shape().contentToString()}")
+            Log.d(TAG, "  Input type: ${inputTensor.dataType()}")
+            Log.d(TAG, "  Output shape: ${outputTensor.shape().contentToString()}")
+            Log.d(TAG, "  Output type: ${outputTensor.dataType()}")
 
             scalers = loadScalerParams(scalerName)
+            Log.d(TAG, " Scalers chargés (${scalers.size} features)")
+            
             targetNames = loadTargetNames(configName)
+            Log.d(TAG, " Target names chargés (${targetNames.size} targets):")
+            targetNames.forEachIndexed { idx, name ->
+                Log.d(TAG, "    [$idx] $name")
+            }
 
+            Log.d(TAG, "========================================")
+            Log.d(TAG, " MODÈLE PRÊT À L'UTILISATION")
+            Log.d(TAG, "========================================")
             promise.resolve("Model & scalers loaded")
         } catch (e: Exception) {
+            Log.e(TAG, " ERREUR CHARGEMENT MODÈLE: ${e.message}", e)
             promise.reject("MODEL_LOAD_ERROR", e)
         }
     }
@@ -54,29 +90,56 @@ class HybridModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun classifySequenceFromUri(uriString: String, promise: Promise) {
         try {
+            Log.d(TAG, "========================================")
+            Log.d(TAG, " INFÉRENCE DÉMARRÉE")
+            Log.d(TAG, "========================================")
+            
             if (interpreter == null) {
+                Log.e(TAG, " ERREUR: Modèle non chargé")
                 promise.reject("NO_MODEL", "Model not loaded")
                 return
             }
 
+            Log.d(TAG, " Lecture du fichier: $uriString")
             val sequence = loadSequenceFromUri(uriString)
+            Log.d(TAG, " Séquence chargée: ${sequence.size} timesteps")
+            
             if (sequence.size != sampleCount) {
+                Log.e(TAG, " ERREUR: Mauvaise longueur de séquence (attendu: $sampleCount, reçu: ${sequence.size})")
                 promise.reject("BAD_SHAPE", "Sequence length must be $sampleCount (got ${sequence.size})")
                 return
             }
             for (r in sequence) {
                 if (r.size != featureCount) {
+                    Log.e(TAG, " ERREUR: Mauvais nombre de features (attendu: $featureCount, reçu: ${r.size})")
                     promise.reject("BAD_SHAPE", "Each timestep must have $featureCount features")
                     return
                 }
             }
 
+            // Log quelques valeurs brutes avant normalisation
+            Log.d(TAG, " Échantillon de données brutes (premier timestep, 5 premières features):")
+            for (i in 0 until minOf(5, featureCount)) {
+                Log.d(TAG, "    Feature[$i]: ${sequence[0][i]}")
+            }
+
+            Log.d(TAG, " Construction du buffer d'entrée avec normalisation...")
             val inputBuffer = buildInputBuffer(sequence)
-            val output = Array(1) { FloatArray(targetNames.size.coerceAtLeast(12)) } // ensure size >= 12
+            Log.d(TAG, " Buffer d'entrée préparé (taille: ${inputBuffer.capacity()} bytes)")
+            
+            val output = Array(1) { FloatArray(targetNames.size.coerceAtLeast(12)) }
+            Log.d(TAG, " Taille de sortie: ${output[0].size}")
 
+            Log.d(TAG, " EXÉCUTION DE L'INFÉRENCE...")
+            val startTime = System.currentTimeMillis()
             interpreter!!.run(inputBuffer, output)
+            val inferenceTime = System.currentTimeMillis() - startTime
+            Log.d(TAG, " INFÉRENCE TERMINÉE en ${inferenceTime}ms")
 
-            // Build result
+            // Log des résultats
+            Log.d(TAG, "========================================")
+            Log.d(TAG, " RÉSULTATS DE PRÉDICTION:")
+            Log.d(TAG, "========================================")
             val resultArray = WritableNativeArray()
             val names = if (targetNames.isNotEmpty()) targetNames else generateDefaultTargets()
             val out = output[0]
@@ -86,10 +149,16 @@ class HybridModule(reactContext: ReactApplicationContext) :
                 obj.putString("label", label)
                 obj.putDouble("value", out[i].toDouble())
                 resultArray.pushMap(obj)
+                
+                // Log chaque prédiction
+                Log.d(TAG, "  [$i] $label = ${String.format("%.4f", out[i])}")
             }
+            Log.d(TAG, "========================================")
 
             promise.resolve(resultArray)
         } catch (e: Exception) {
+            Log.e(TAG, " ERREUR INFÉRENCE: ${e.message}", e)
+            e.printStackTrace()
             promise.reject("INFERENCE_ERROR", e)
         }
     }
@@ -178,6 +247,8 @@ class HybridModule(reactContext: ReactApplicationContext) :
         bb.order(ByteOrder.nativeOrder())
 
         // sequence is [168][47] ; put in row-major order [1,168,47]
+        // Log quelques valeurs normalisées pour vérification
+        var loggedSamples = 0
         for (t in 0 until sampleCount) {
             val row = sequence[t]
             for (f in 0 until featureCount) {
@@ -185,6 +256,12 @@ class HybridModule(reactContext: ReactApplicationContext) :
                 val (mean, scale) = scalers[f] ?: Pair(0f, 1f)
                 val norm = (raw - mean) / scale
                 bb.putFloat(norm)
+                
+                // Log les 3 premières valeurs normalisées pour vérification
+                if (t == 0 && f < 3 && loggedSamples < 3) {
+                    Log.d(TAG, "    Normalisation feature[$f]: raw=$raw, mean=$mean, scale=$scale -> normalized=$norm")
+                    loggedSamples++
+                }
             }
         }
 
