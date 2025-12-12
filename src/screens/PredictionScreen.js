@@ -44,15 +44,15 @@ const PredictionScreen = () => {
         if (gasType === "nh3") {
             return {
                 optimal: 5,      // < 5 ppm
-                warning: 10,     // < 10 ppm
-                danger: 20,      // < 20 ppm
+                warning: 10,     // ≥ 10 ppm et < 20 ppm
+                danger: 20,      // ≥ 20 ppm et < 25 ppm
                 critical: 25     // ≥ 25 ppm
             }
         } else { // co
             return {
                 optimal: 10,     // < 10 ppm
-                warning: 50,     // < 50 ppm
-                danger: 600,     // < 600 ppm
+                warning: 50,     // ≥ 50 ppm et < 600 ppm
+                danger: 600,     // ≥ 600 ppm et < 2000 ppm
                 critical: 2000   // ≥ 2000 ppm
             }
         }
@@ -116,27 +116,9 @@ const PredictionScreen = () => {
             if (HybridModule?.classifySequenceFromUri) {
                 res = await HybridModule.classifySequenceFromUri(selectedUri)
             } else {
-                // ✅ TEST AVEC DES VALEURS POUR VERIFIER LES SEUILS
-                await new Promise((resolve) => setTimeout(resolve, 1500))
-                res = [
-                    // 1h - Valeurs DANGEREUSES
-                    { label: "temperature_1h", value: 38.0 },   // Au-delà acceptable -> Danger
-                    { label: "humidity_1h", value: 30 },        // En dessous acceptable -> Danger
-                    { label: "nh3_1h", value: 0.022 },          // 22 ppm -> Danger
-                    { label: "co_1h", value: 0.100 },           // 100 ppm -> Danger
-
-                    // 6h - Valeurs AVERTISSEMENT
-                    { label: "temperature_6h", value: 34.5 },   // Dans acceptable mais hors optimal -> Warning
-                    { label: "humidity_6h", value: 48 },        // Dans acceptable mais hors optimal -> Warning
-                    { label: "nh3_6h", value: 0.008 },          // 8 ppm -> Warning
-                    { label: "co_6h", value: 0.040 },           // 40 ppm -> Warning
-
-                    // 24h - Valeurs CRITIQUES
-                    { label: "temperature_24h", value: 39.0 },  // Très au-delà acceptable -> Critique
-                    { label: "humidity_24h", value: 75 },       // Très au-delà acceptable -> Critique
-                    { label: "nh3_24h", value: 0.030 },         // 30 ppm -> Critique
-                    { label: "co_24h", value: 2.500 },          // 2500 ppm -> Critique
-                ]
+                // ✅ PRODUCTION : Pas de données de test
+                Alert.alert("Erreur", "Le module d'analyse n'est pas disponible.")
+                return
             }
 
             analyzeResults(res)
@@ -218,25 +200,23 @@ const PredictionScreen = () => {
 
         setAnalysis(result)
         ActivityStore.setLastPrediction(result)
-
-        console.log("📊 ANALYSE AVEC SEUILS DOCUMENT:", result)
-        console.log("🔴 Risque global:", globalRisk)
     }
 
-    // ✅ Évaluation température selon document
+    // ✅ Évaluation température selon vos scénarios exacts
     function evaluateTemperatureRisk(value, thresholds) {
         const { optimal, acceptable } = thresholds
 
-        // Si valeur en dehors de la plage acceptable
-        if (value < acceptable[0] || value > acceptable[1]) {
-            // Vérifier si critique (très éloigné)
-            if (value < acceptable[0] - 3 || value > acceptable[1] + 3) {
-                return {
-                    level: "critical",
-                    message: value < acceptable[0] ? "HYPOTHERMIE CRITIQUE" : "HYPERTHERMIE CRITIQUE",
-                    icon: "alert-octagon"
-                }
+        // CRITIQUE : valeur très éloignée de la plage acceptable (> 3°C en dehors)
+        if (value < acceptable[0] - 3 || value > acceptable[1] + 3) {
+            return {
+                level: "critical",
+                message: value < acceptable[0] ? "HYPOTHERMIE CRITIQUE" : "HYPERTHERMIE CRITIQUE",
+                icon: "alert-octagon"
             }
+        }
+
+        // DANGER : valeur en dehors de la plage acceptable, mais reste proche (≤ 3°C en dehors)
+        if (value < acceptable[0] || value > acceptable[1]) {
             return {
                 level: "danger",
                 message: value < acceptable[0] ? "Hypothermie - Danger" : "Hyperthermie - Danger",
@@ -244,7 +224,7 @@ const PredictionScreen = () => {
             }
         }
 
-        // Si valeur dans acceptable mais hors optimal
+        // WARNING : valeur dans la plage acceptable, mais en dehors de la plage optimale
         if (value < optimal[0] || value > optimal[1]) {
             return {
                 level: "warning",
@@ -253,7 +233,7 @@ const PredictionScreen = () => {
             }
         }
 
-        // Si valeur dans optimal
+        // OPTIMAL : valeur dans la plage optimale
         return {
             level: "optimal",
             message: "Température optimale",
@@ -261,20 +241,21 @@ const PredictionScreen = () => {
         }
     }
 
-    // ✅ Évaluation humidité selon document
+    // ✅ Évaluation humidité selon vos scénarios exacts
     function evaluateHumidityRisk(value, thresholds) {
         const { optimal, acceptable } = thresholds
 
-        // Si valeur en dehors de la plage acceptable
-        if (value < acceptable[0] || value > acceptable[1]) {
-            // Vérifier si critique (très éloigné)
-            if (value < acceptable[0] - 10 || value > acceptable[1] + 10) {
-                return {
-                    level: "critical",
-                    message: value < acceptable[0] ? "AIR TRÈS SEC - CRITIQUE" : "AIR TRÈS HUMIDE - CRITIQUE",
-                    icon: "alert-octagon"
-                }
+        // CRITIQUE : valeur très éloignée de la plage acceptable (> 10% en dehors)
+        if (value < acceptable[0] - 10 || value > acceptable[1] + 10) {
+            return {
+                level: "critical",
+                message: value < acceptable[0] ? "AIR TRÈS SEC - CRITIQUE" : "AIR TRÈS HUMIDE - CRITIQUE",
+                icon: "alert-octagon"
             }
+        }
+
+        // DANGER : valeur en dehors de la plage acceptable, mais reste proche (≤ 10% en dehors)
+        if (value < acceptable[0] || value > acceptable[1]) {
             return {
                 level: "danger",
                 message: value < acceptable[0] ? "Air trop sec - Danger" : "Air trop humide - Danger",
@@ -282,7 +263,7 @@ const PredictionScreen = () => {
             }
         }
 
-        // Si valeur dans acceptable mais hors optimal
+        // WARNING : valeur dans la plage acceptable, mais en dehors de la plage optimale
         if (value < optimal[0] || value > optimal[1]) {
             return {
                 level: "warning",
@@ -291,7 +272,7 @@ const PredictionScreen = () => {
             }
         }
 
-        // Si valeur dans optimal
+        // OPTIMAL : valeur dans la plage optimale
         return {
             level: "optimal",
             message: "Humidité optimale",
@@ -299,10 +280,11 @@ const PredictionScreen = () => {
         }
     }
 
-    // ✅ Évaluation gaz selon document
+    // ✅ Évaluation gaz simplifiée selon votre prompt de correction
     function evaluateGasRisk(valuePpm, gasType, thresholds) {
         const valueInPpm = valuePpm * 1000 // Convertir en ppm
 
+        // Vérifier d'abord les risques les plus graves dans l'ordre
         if (valueInPpm >= thresholds.critical) {
             return {
                 level: "critical",
@@ -327,6 +309,7 @@ const PredictionScreen = () => {
             }
         }
 
+        // Pour les valeurs inférieures au seuil warning
         if (valueInPpm >= thresholds.optimal) {
             return {
                 level: "optimal",
@@ -335,6 +318,7 @@ const PredictionScreen = () => {
             }
         }
 
+        // Valeur strictement inférieure au seuil optimal
         return {
             level: "optimal",
             message: `${gasType.toUpperCase()} optimal`,
@@ -448,10 +432,10 @@ const PredictionScreen = () => {
                             Optimal: &lt;{currentThresholds.nh3.optimal} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.warning }]}>
-                            Avertissement: &lt;{currentThresholds.nh3.warning} ppm
+                            Avertissement: ≥{currentThresholds.nh3.optimal} et &lt;{currentThresholds.nh3.warning} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.danger }]}>
-                            Danger: &lt;{currentThresholds.nh3.danger} ppm
+                            Danger: ≥{currentThresholds.nh3.warning} et &lt;{currentThresholds.nh3.danger} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.critical }]}>
                             Critique: ≥{currentThresholds.nh3.critical} ppm
@@ -468,10 +452,10 @@ const PredictionScreen = () => {
                             Optimal: &lt;{currentThresholds.co.optimal} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.warning }]}>
-                            Avertissement: &lt;{currentThresholds.co.warning} ppm
+                            Avertissement: ≥{currentThresholds.co.optimal} et &lt;{currentThresholds.co.warning} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.danger }]}>
-                            Danger: &lt;{currentThresholds.co.danger} ppm
+                            Danger: ≥{currentThresholds.co.warning} et &lt;{currentThresholds.co.danger} ppm
                         </Text>
                         <Text style={[styles.gasText, { color: riskColors.critical }]}>
                             Critique: ≥{currentThresholds.co.critical} ppm
@@ -507,37 +491,6 @@ const PredictionScreen = () => {
                             <Text style={styles.analyzeBtnText}>Analyser</Text>
                         </>
                     )}
-                </TouchableOpacity>
-
-                {/* Bouton TEST avec les seuils du document */}
-                <TouchableOpacity
-                    style={[styles.testBtn, { backgroundColor: riskColors.danger }]}
-                    onPress={() => {
-                        // Données de test pour vérifier tous les seuils
-                        const testData = [
-                            // 1h - DANGER
-                            { label: "temperature_1h", value: 38.0 },
-                            { label: "humidity_1h", value: 30 },
-                            { label: "nh3_1h", value: 0.022 },
-                            { label: "co_1h", value: 0.100 },
-
-                            // 6h - AVERTISSEMENT
-                            { label: "temperature_6h", value: 34.5 },
-                            { label: "humidity_6h", value: 48 },
-                            { label: "nh3_6h", value: 0.008 },
-                            { label: "co_6h", value: 0.040 },
-
-                            // 24h - CRITIQUE
-                            { label: "temperature_24h", value: 39.0 },
-                            { label: "humidity_24h", value: 75 },
-                            { label: "nh3_24h", value: 0.030 },
-                            { label: "co_24h", value: 2.500 },
-                        ]
-                        analyzeResults(testData)
-                    }}
-                >
-                    <MaterialCommunityIcons name="test-tube" size={18} color="#FFFFFF" />
-                    <Text style={styles.testBtnText}>Tester Seuils</Text>
                 </TouchableOpacity>
             </View>
 
@@ -663,7 +616,7 @@ const PredictionScreen = () => {
                         </View>
                     )}
 
-                    {/* Recommandations */}
+                    {/* Recommandations selon scénarios */}
                     {analysis.globalRisk !== "optimal" && (
                         <View style={styles.recommendationsCard}>
                             <Text style={styles.recommendationsTitle}>Recommandations</Text>
@@ -889,21 +842,6 @@ const styles = StyleSheet.create({
         color: "#FFFFFF",
         fontWeight: "bold",
         fontSize: 14,
-        marginLeft: 6,
-    },
-    testBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#EF4444",
-        paddingVertical: 10,
-        borderRadius: 8,
-        marginTop: 8,
-    },
-    testBtnText: {
-        color: "#FFFFFF",
-        fontWeight: "600",
-        fontSize: 13,
         marginLeft: 6,
     },
     globalRisk: {
